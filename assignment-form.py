@@ -4,6 +4,7 @@ import os
 import pickle
 import json
 import flask
+from werkzeug.exceptions import ServiceUnavailable
 import google.oauth2.credentials
 import google_auth_oauthlib.flow
 import google.auth.transport.requests
@@ -54,11 +55,6 @@ app.secret_key = secret
 SHEET_ID = get_state('sheet_id').decode().strip()
 FORM_ID = get_state('form_id').decode().strip()
 
-class NotActive(Exception):
-    def __init__(self):
-        self.status_code = 503
-        self.message = 'This form is not active.'
-
 spreadsheets = None
 def get_spreadsheets(creds=None):
     """Get the google sheets API for spreadsheets."""
@@ -74,7 +70,7 @@ def get_spreadsheets(creds=None):
                 creds.refresh(google.auth.transport.requests.Request())
                 set_state('credentials', pickle.dumps(creds))
     if not creds or not creds.valid:
-        raise NotActive()
+        raise ServiceUnavailable('This form is not active.')
 
     spreadsheets = googleapiclient.discovery.build('sheets', 'v4', credentials=creds).spreadsheets()
     return spreadsheets
