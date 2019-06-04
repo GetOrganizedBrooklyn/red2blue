@@ -20,12 +20,12 @@ There are a few ways to do this:
 The following settings are required:
 
 <dl>
-<dt>`sheet_id`</dt>
-<dd>The id of the google sheet to pull from.  You can find it in the URL of the sheet: https://docs.google.com/spreadsheets/d/*sheet_id*/edit?usp=sharing</dd>
-<dt>`form_id`</dt>
-<dd>The id of the google form to submit to.  You can find it in the URL of the form: https://docs.google.com/forms/d/form_id/edit?usp=sharing</dd>
-<dt>`client_secret`</dt>
-<dd>The client secret JSON from google, which should look like `{"web":{"client_id":...`.</dd>
+<dt>sheet_id</dt>
+<dd>The id of the google sheet to pull from.  You can find it in the URL of the sheet: https://docs.google.com/spreadsheets/d/<em>sheet_id</em>/edit?usp=sharing</dd>
+<dt>form_id</dt>
+<dd>The id of the google form to submit to.  You can find it in the URL of the form: https://docs.google.com/forms/d/<em>form_id</em>/edit?usp=sharing</dd>
+<dt>client_secret</dt>
+<dd>The client secret JSON from google, which should look like <code>{"web":{"client_id":...</code>.</dd>
 </dl>
 
 The application also creates a random `secret` and `credentials` after activation.
