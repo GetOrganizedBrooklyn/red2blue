@@ -104,8 +104,9 @@ def oauth_flow(**kwargs):
 def activate():
     flow = oauth_flow()
     authorization_url, state = flow.authorization_url(
-            access_type='offline')
-            #include_granted_scopes='true')
+            access_type='offline',
+            include_granted_scopes='true',
+            prompt='consent')
     flask.session['state'] = state
     return flask.redirect(authorization_url)
 
