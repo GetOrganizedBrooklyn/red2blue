@@ -12,6 +12,7 @@ import googleapiclient.discovery
 
 TEXTER_LIST = 'TexterList'
 CAMPAIGN_LIST = 'CampaignList'
+ACTIVE_STATE = 'ActiveRange'
 AVAILABLE_TEXTS = 'AvailableTexts'
 
 app = flask.Flask(__name__, template_folder='.')
@@ -89,9 +90,10 @@ def get_texters():
     return get_column(TEXTER_LIST)
 
 def get_campaigns():
-    names = get_column(CAMPAIGN_LIST)
-    counts = map(int, get_column(AVAILABLE_TEXTS))
-    return zip(names, counts)
+    return [(name, int(count))
+            for name, active, count
+            in zip(get_column(CAMPAIGN_LIST), get_column(ACTIVE_STATE), get_column(AVAILABLE_TEXTS))
+            if active == 'Assigning']
 
 def oauth_flow(**kwargs):
     client_config = json.loads(get_state('client_secret'))
@@ -121,7 +123,7 @@ def oauth2callback():
     spreadsheets = get_spreadsheets(creds)
     res = spreadsheets.get(spreadsheetId = SHEET_ID, fields = 'namedRanges').execute()
     ranges = {r['name']: r for r in res['namedRanges']}
-    for r in (TEXTER_LIST, CAMPAIGN_LIST, AVAILABLE_TEXTS):
+    for r in (TEXTER_LIST, CAMPAIGN_LIST, ACTIVE_STATE, AVAILABLE_TEXTS):
         ranges[r]
 
     set_state('credentials', pickle.dumps(creds))
