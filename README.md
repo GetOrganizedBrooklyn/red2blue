@@ -50,17 +50,21 @@ The setup generally follows Google's [python quickstart guide](https://developer
    1. Download JSON for this client and save it as `client_secret` (no extension) in the project directory
 1. Setup a python3 environment
    1. Optionally create and activate a virtual env:
-       python3 -m venv venv
-       source venv/bin/activate
+      ```
+      python3 -m venv venv
+      source venv/bin/activate
+      ```
    1. Install the dependencies: `pip3 install -r requirements.txt`
 1. Make sure `sheet_id` and `form_id` reference the google sheet and form you want to use, and that your google account has access to them.
 1. Run flask for local development
    1. Create a `.flaskenv` file containing:
-       FLASK_APP=assignment-form
-       FLASK_ENV=development
-       FLASK_RUN_HOST=localhost
-       FLASK_RUN_PORT=8283
-       FLASK_RUN_CERT=adhoc
+      ```
+      FLASK_APP=assignment-form
+      FLASK_ENV=development
+      FLASK_RUN_HOST=localhost
+      FLASK_RUN_PORT=8283
+      FLASK_RUN_CERT=adhoc
+      ```
    1. Run `flask run`
-1. Open a browser and go to `https://localhost:8283/`.  You should see a "not activated" message.
-1. Activate the form by going to `https://localhost:8283/activate` and signing in through google.
+1. Open a browser and go to https://localhost:8283/.  You should see a "not activated" message.
+1. Activate the form by going to https://localhost:8283/activate and signing in through google.
