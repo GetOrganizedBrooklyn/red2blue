@@ -1,0 +1,6 @@
+/__pycache__/
+/.flaskenv
+/*.pem
+/client_secret
+/credentials
+/secret

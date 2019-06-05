@@ -35,3 +35,32 @@ The application also creates a random `secret` and `credentials` after activatio
 The site needs to be activated with a google account that has access to the source sheet.
 Visit the `/activate` URL to begin this process.
 It should remain activated for some amount of time (TBD)...
+
+### Quickstart for local development
+
+The setup generally follows Google's [python quickstart guide](https://developers.google.com/sheets/api/quickstart/python).
+
+1. Clone this repo: `git clone https://github.com/GetOrganizedBrooklyn/red2blue`
+1. Get `client_secret` json from Google:
+   1. Go to https://console.developers.google.com/
+   1. Create a new project (if necessary)
+   1. Add the Google Sheets API to the project through the Library.
+   1. Under Credentials, create "OAuth (2.0) client ID" for a "Web application".
+   1. Add to Authorized redirect URIs `https://localhost:8283/oauth2callback` (no JavaScript origins)
+   1. Download JSON for this client and save it as `client_secret` (no extension) in the project directory
+1. Setup a python3 environment
+   1. Optionally create and activate a virtual env:
+       python3 -m venv venv
+       source venv/bin/activate
+   1. Install the dependencies: `pip3 install -r requirements.txt`
+1. Make sure `sheet_id` and `form_id` reference the google sheet and form you want to use, and that your google account has access to them.
+1. Run flask for local development
+   1. Create a `.flaskenv` file containing:
+       FLASK_APP=assignment-form
+       FLASK_ENV=development
+       FLASK_RUN_HOST=localhost
+       FLASK_RUN_PORT=8283
+       FLASK_RUN_CERT=adhoc
+   1. Run `flask run`
+1. Open a browser and go to `https://localhost:8283/`.  You should see a "not activated" message.
+1. Activate the form by going to `https://localhost:8283/activate` and signing in through google.
