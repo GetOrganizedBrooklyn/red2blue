@@ -53,47 +53,77 @@ if not secret:
     secret = os.urandom(32)
     set_state('secret', secret)
 app.secret_key = secret
-SHEET_ID = get_state('sheet_id').decode().strip()
 FORM_ID = get_state('form_id').decode().strip()
 
-spreadsheets = None
-def get_spreadsheets(creds=None):
-    """Get the google sheets API for spreadsheets."""
-    global spreadsheets
-    if spreadsheets:
-        return spreadsheets
+class Sheet():
+    SHEET_ID = get_state('sheet_id').decode().strip()
+    sheet = None
 
-    if creds is None:
-        creds = get_state('credentials')
-        if creds:
-            creds = pickle.loads(creds)
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(google.auth.transport.requests.Request())
-                set_state('credentials', pickle.dumps(creds))
-    if not creds or not creds.valid:
-        raise ServiceUnavailable('This form is not active.')
+    @staticmethod
+    def set_creds(creds):
+        set_state('credentials', pickle.dumps(creds))
 
-    spreadsheets = googleapiclient.discovery.build('sheets', 'v4', credentials=creds).spreadsheets()
-    return spreadsheets
+    @staticmethod
+    def get_creds(creds = None):
+        if creds is None:
+            creds = get_state('credentials')
+            if creds:
+                creds = pickle.loads(creds)
+                if creds and creds.expired and creds.refresh_token:
+                    creds.refresh(google.auth.transport.requests.Request())
+                    Sheet.set_creds(creds)
 
-def get_range(range):
-    spreadsheets = get_spreadsheets()
-    res = spreadsheets.values().get(spreadsheetId = SHEET_ID, range = range).execute()
-    return res['values']
+        if not creds or not creds.valid:
+            raise ServiceUnavailable('This form is not active.')
 
-def get_column(range):
-    data = get_range(range)
-    data.pop(0)
-    return [row[0] for row in data]
+        return creds
 
-def get_texters():
-    return get_column(TEXTER_LIST)
+    @staticmethod
+    def build_api(creds):
+        return googleapiclient.discovery.build('sheets', 'v4', credentials=creds).spreadsheets()
 
-def get_campaigns():
-    return [(name, int(count))
-            for name, active, count
-            in zip(get_column(CAMPAIGN_LIST), get_column(ACTIVE_STATE), get_column(AVAILABLE_TEXTS))
-            if active == 'Assigning']
+    def __init__(self, creds=None, sheet_id=SHEET_ID):
+        self.sheet_id = sheet_id
+        self.creds = self.get_creds(creds)
+        self.api = self.build_api(self.creds)
+
+    @classmethod
+    def get(self):
+        """Get or create the global cached sheet."""
+        if not self.sheet:
+            self.sheet = Sheet()
+        return self.sheet
+
+    @classmethod
+    def set(self, sheet):
+        """Set the global cached sheet."""
+        self.sheet = sheet
+        self.set_creds(sheet.creds)
+
+    def use(self):
+        """Cache this sheet as the global one."""
+        self.set(self)
+
+    def get_sheet(self, **kwargs):
+        return self.api.get(spreadsheetId = self.sheet_id, **kwargs).execute()
+
+    def get_range(self, range):
+        res = self.api.values().get(spreadsheetId = self.sheet_id, range = range).execute()
+        return res['values']
+
+    def get_column(self, range):
+        data = self.get_range(range)
+        data.pop(0)
+        return [row[0] for row in data]
+
+    def get_texters(self):
+        return self.get_column(TEXTER_LIST)
+
+    def get_campaigns(self):
+        return [(name, int(count))
+                for name, active, count
+                in zip(self.get_column(CAMPAIGN_LIST), self.get_column(ACTIVE_STATE), self.get_column(AVAILABLE_TEXTS))
+                if active == 'Assigning']
 
 def oauth_flow(**kwargs):
     client_config = json.loads(get_state('client_secret'))
@@ -120,26 +150,20 @@ def oauth2callback():
     creds = flow.credentials
 
     # make sure we can access the sheet and it has the necessary stuff
-    spreadsheets = get_spreadsheets(creds)
-    res = spreadsheets.get(spreadsheetId = SHEET_ID, fields = 'namedRanges').execute()
+    sheet = Sheet(creds=creds)
+    res = sheet.get_sheet(fields = 'namedRanges')
     ranges = {r['name']: r for r in res['namedRanges']}
     for r in (TEXTER_LIST, CAMPAIGN_LIST, ACTIVE_STATE, AVAILABLE_TEXTS):
         ranges[r]
 
-    set_state('credentials', pickle.dumps(creds))
+    sheet.use()
     return flask.redirect('/')
 
 @app.route('/')
 def top():
-    texters = get_texters()
-    campaigns = get_campaigns()
+    sheet = Sheet.get()
+    texters = sheet.get_texters()
+    campaigns = sheet.get_campaigns()
     return flask.render_template('assignment-form.html', FORM_ID = FORM_ID,
             texters = texters,
             campaigns = campaigns)
-
-@app.route('/fake')
-def fake():
-    return flask.render_template('assignment-form.html', FORM_ID = FORM_ID,
-            texters = ['Josh Molho'],
-            campaigns = [('MONDAY 10am ET: Lauren Underwood IL', 10000)])
-
