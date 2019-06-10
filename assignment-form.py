@@ -2,18 +2,15 @@
 
 import os
 import pickle
+import time
 import json
 import flask
-from werkzeug.exceptions import ServiceUnavailable
+from werkzeug.exceptions import ServiceUnavailable, FailedDependency
 import google.oauth2.credentials
 import google_auth_oauthlib.flow
 import google.auth.transport.requests
 import googleapiclient.discovery
-
-TEXTER_LIST = 'TexterList'
-CAMPAIGN_LIST = 'CampaignList'
-ACTIVE_STATE = 'ActiveRange'
-AVAILABLE_TEXTS = 'AvailableTexts'
+import wtforms
 
 app = flask.Flask(__name__, template_folder='.')
 
@@ -57,6 +54,12 @@ FORM_ID = get_state('form_id').decode().strip()
 
 class Sheet():
     SHEET_ID = get_state('sheet_id').decode().strip()
+    TEXTER_LIST = 'TexterList'
+    CAMPAIGN_LIST = 'CampaignList'
+    ACTIVE_STATE = 'ActiveRange'
+    AVAILABLE_TEXTS = 'AvailableTexts'
+    RESPONSES = 'Responses'
+    ALL_RANGES = [TEXTER_LIST, CAMPAIGN_LIST, ACTIVE_STATE, AVAILABLE_TEXTS, RESPONSES]
     sheet = None
 
     @staticmethod
@@ -86,6 +89,8 @@ class Sheet():
         self.sheet_id = sheet_id
         self.creds = self.get_creds(creds)
         self.api = self.build_api(self.creds)
+        self.texters = None
+        self.campaigns = None
 
     @classmethod
     def get(self):
@@ -117,18 +122,27 @@ class Sheet():
         return [row[0] for row in data]
 
     def get_texters(self):
-        return self.get_column(TEXTER_LIST)
+        if self.texters is None:
+            self.texters = self.get_column(self.TEXTER_LIST)
+        return self.texters
 
     def get_campaigns(self):
-        return [(name, int(count))
-                for name, active, count
-                in zip(self.get_column(CAMPAIGN_LIST), self.get_column(ACTIVE_STATE), self.get_column(AVAILABLE_TEXTS))
-                if active == 'Assigning']
+        if self.campaigns is None:
+            self.campaigns = {name: int(count)
+                    for name, active, count
+                    in zip(self.get_column(self.CAMPAIGN_LIST), self.get_column(self.ACTIVE_STATE), self.get_column(self.AVAILABLE_TEXTS))
+                    if active == 'Assigning'}
+        return self.campaigns
+
+    def add_response(self, *values):
+        self.api.values().append(spreadsheetId = self.sheet_id, range = self.RESPONSES,
+                valueInputOption = 'USER_ENTERED',
+                body = {'values': [values]}).execute()
 
 def oauth_flow(**kwargs):
     client_config = json.loads(get_state('client_secret'))
     return google_auth_oauthlib.flow.Flow.from_client_config(client_config,
-            scopes=['https://www.googleapis.com/auth/spreadsheets.readonly'],
+            scopes=['https://www.googleapis.com/auth/spreadsheets'],
             redirect_uri = flask.url_for('oauth2callback', _external=True),
             **kwargs)
 
@@ -153,17 +167,44 @@ def oauth2callback():
     sheet = Sheet(creds=creds)
     res = sheet.get_sheet(fields = 'namedRanges')
     ranges = {r['name']: r for r in res['namedRanges']}
-    for r in (TEXTER_LIST, CAMPAIGN_LIST, ACTIVE_STATE, AVAILABLE_TEXTS):
-        ranges[r]
+    for r in Sheet.ALL_RANGES:
+        if r not in ranges:
+            raise FailedDependency('Form is missing named range: ' + r)
 
     sheet.use()
     return flask.redirect('/')
 
-@app.route('/')
+class Form(wtforms.Form):
+    texter   = wtforms.SelectField('Texter name')
+    campaign = wtforms.SelectField('Campaign requested')
+    number   = wtforms.IntegerField('Number of texts requested',
+            validators = [wtforms.validators.NumberRange(300, 1000)])
+    check1   = wtforms.BooleanField('I have joined the ThruText account for the assignment that I am requesting',
+            validators = [wtforms.validators.DataRequired()])
+    check2   = wtforms.BooleanField('I will not "ghost!"  I will check ThruText for replies AT LEAST twice a day through November 5 and AT LEAST four times on November 6!',
+            validators = [wtforms.validators.DataRequired()])
+
+    def __init__(self, formdata=None, **kwargs):
+        super(Form, self).__init__(formdata, **kwargs)
+        self.number.widget.min = 300
+        self.number.widget.max = 1000
+
+@app.route('/', methods=['GET', 'POST'])
 def top():
     sheet = Sheet.get()
     texters = sheet.get_texters()
     campaigns = sheet.get_campaigns()
-    return flask.render_template('assignment-form.html', FORM_ID = FORM_ID,
-            texters = texters,
+    form = Form(flask.request.form)
+    form.texter.choices = [(texter, texter) for texter in texters]
+    form.campaign.choices = [(name, name) for name, number in campaigns.items() if number > 0]
+    try:
+        number = campaigns[form.campaign.data]
+        form.number.validators[0].max = min(1000, number)
+        form.number.validators[0].min = min(300, number)
+    except KeyError:
+        pass
+    if flask.request.method == 'POST' and form.validate():
+        sheet.add_response(time.strftime('%D %T'), form.texter.data, form.campaign.data, form.number.data)
+        return 'Submitted'
+    return flask.render_template('assignment-form.html', form = form,
             campaigns = campaigns)

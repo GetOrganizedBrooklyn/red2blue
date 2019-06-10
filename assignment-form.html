@@ -1,35 +1,59 @@
 <!doctype html>
 <html>
 <head>
-<title>Red2Blue GOTV texting assignment request</title>
+  <title>Red2Blue GOTV texting assignment request</title>
+  <style>
+    .errors {
+      color: red;
+    }
+  </style>
 </head>
 <body>
-<form action="https://docs.google.com/forms/d/e/{{ FORM_ID }}/formResponse" method="POST">
-  <div>
-    <label for="texter">Texter name</label>
-    <select name="entry.1847835818" id="texter">
-      {% for texter in texters %}
-	<option>{{ texter }}</option>
-      {% endfor %}
-    </select>
-  </div>
-  <div>
-    <label for="campaign">Campaign requested</label>
-    <select name="entry.1889930268" id="campaign">
-      {% for campaign in campaigns %}
-	<option value="{{ campaign[0] }}" {% if campaign[1] <= 0 %}disabled='disabled'{% endif %}>{{ campaign[0] }} ({{ campaign[1] }})</option>
-      {% endfor %}
-    </select>
-  </div>
-  <div>
-    <label for="number">Number of texts requested</label>
-  <input type="text" name="entry.106956032" min="300" max="1000">
-  </div>
-  <div>
-    <input type="checkbox" name="entry.1049204257" value="I have joined the ThruText account for the assignment that I am requesting">
-    <input type="checkbox" name="entry.102947144" value='I will not "ghost!"  I will check ThruText for replies AT LEAST twice a day through November 5 and AT LEAST four times on November 6!'>
-  </div>
-  <input type='submit'>
-</form>
+  <form method="POST">
+    {% macro field_label(field) %}
+      <label for='{{ field.name }}'>{{ field.label }}</label>
+      {% if field.errors %}
+	<ul class='errors'>
+	{% for error in field.errors %}
+	  <li>{{ error }}</li>
+	{% endfor %}
+	</ul>
+      {% endif %}
+    {% endmacro %}
+    {% if error %}
+    <div id='error'>
+      {{ error }}
+    </div>
+    {% endif %}
+    <div>
+      {{ field_label(form.texter) }}
+      {{ form.texter }}
+    </div>
+    <div>
+      {{ field_label(form.campaign) }}
+      <select name="campaign" id="campaign">
+	{% for name, number in campaigns.items() %}
+	  <option value="{{ name }}"
+	    {% if number <= 0 %}disabled='disabled'{% endif %}
+	    {% if name == form.campaign.data %}selected='selected'{% endif %}>
+	    {{ name }} ({{ number }})
+	  </option>
+	{% endfor %}
+      </select>
+    </div>
+    <div>
+      {{ field_label(form.number) }}
+      {{ form.number }}
+    </div>
+    <div>
+      {{ form.check1 }}
+      {{ field_label(form.check1) }}
+    </div>
+    <div>
+      {{ form.check2 }}
+      {{ field_label(form.check2) }}
+    </div>
+    <input type='submit'>
+  </form>
 </body>
 </html>
