@@ -4,3 +4,6 @@
 /client_secret
 /credentials
 /secret
+/node_modules/
+/package-lock.json
+/web/*.js.map
