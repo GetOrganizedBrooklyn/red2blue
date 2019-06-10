@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from typing import Optional, List, Dict
 import os
 import pickle
 import time
@@ -12,7 +13,7 @@ import google.auth.transport.requests
 import googleapiclient.discovery
 import wtforms
 
-app = flask.Flask(__name__, template_folder='.')
+app = flask.Flask(__name__, template_folder='web', static_folder='web')
 
 redis_url = os.environ.get('REDIS_URL')
 if redis_url:
@@ -21,7 +22,7 @@ if redis_url:
 else:
     redis = None
 
-def get_state(var: str, default=None):
+def get_state(var: str, default=None) -> Optional[bytes]:
     """Load a named persistent state key from wherever is available: file on disk, environment variable."""
     if redis:
         val = redis.get(var)
@@ -36,7 +37,7 @@ def get_state(var: str, default=None):
         except KeyError:
             return default
 
-def set_state(var:str, data: bytes):
+def set_state(var: str, data: bytes) -> None:
     """Set a persistent state key to the given value, which can later be read with `get_state`."""
     if redis:
         redis.set(var, data)
@@ -63,11 +64,11 @@ class Sheet():
     sheet = None
 
     @staticmethod
-    def set_creds(creds):
+    def set_creds(creds: google.oauth2.credentials.Credentials) -> None:
         set_state('credentials', pickle.dumps(creds))
 
     @staticmethod
-    def get_creds(creds = None):
+    def get_creds(creds: Optional[google.oauth2.credentials.Credentials] = None) -> google.oauth2.credentials.Credentials:
         if creds is None:
             creds = get_state('credentials')
             if creds:
@@ -82,10 +83,10 @@ class Sheet():
         return creds
 
     @staticmethod
-    def build_api(creds):
+    def build_api(creds: Optional[google.oauth2.credentials.Credentials]):
         return googleapiclient.discovery.build('sheets', 'v4', credentials=creds).spreadsheets()
 
-    def __init__(self, creds=None, sheet_id=SHEET_ID):
+    def __init__(self, creds: Optional[google.oauth2.credentials.Credentials]=None, sheet_id:str=SHEET_ID):
         self.sheet_id = sheet_id
         self.creds = self.get_creds(creds)
         self.api = self.build_api(self.creds)
@@ -93,40 +94,40 @@ class Sheet():
         self.campaigns = None
 
     @classmethod
-    def get(self):
+    def get(self) -> "Sheet":
         """Get or create the global cached sheet."""
         if not self.sheet:
             self.sheet = Sheet()
         return self.sheet
 
     @classmethod
-    def set(self, sheet):
+    def set(self, sheet: "Sheet") -> None:
         """Set the global cached sheet."""
         self.sheet = sheet
         self.set_creds(sheet.creds)
 
-    def use(self):
+    def use(self) -> None:
         """Cache this sheet as the global one."""
         self.set(self)
 
     def get_sheet(self, **kwargs):
         return self.api.get(spreadsheetId = self.sheet_id, **kwargs).execute()
 
-    def get_range(self, range):
+    def get_range(self, range) -> List[List[str]]:
         res = self.api.values().get(spreadsheetId = self.sheet_id, range = range).execute()
         return res['values']
 
-    def get_column(self, range):
+    def get_column(self, range) -> List[str]:
         data = self.get_range(range)
         data.pop(0)
         return [row[0] for row in data]
 
-    def get_texters(self):
+    def get_texters(self) -> List[str]:
         if self.texters is None:
             self.texters = self.get_column(self.TEXTER_LIST)
         return self.texters
 
-    def get_campaigns(self):
+    def get_campaigns(self) -> Dict[str, int]:
         if self.campaigns is None:
             self.campaigns = {name: int(count)
                     for name, active, count

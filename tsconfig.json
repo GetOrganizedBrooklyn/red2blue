@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "module": "system",
+    "target": "es5",
+    "lib": ["es6", "dom"],
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "sourceMap": true,
+    "alwaysStrict": true,
+    "strict": true
+  },
+  "files": [
+    "web/assignment-form.ts"
+  ]
+}

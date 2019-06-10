@@ -7,9 +7,10 @@
       color: red;
     }
   </style>
+  <script src='web/assignment-form.js'></script>
 </head>
-<body>
-  <form method="POST">
+<body onload='main()'>
+  <form method="POST" name="form" id ="form">
     {% macro field_label(field) %}
       <label for='{{ field.name }}'>{{ field.label }}</label>
       {% if field.errors %}
@@ -31,9 +32,9 @@
     </div>
     <div>
       {{ field_label(form.campaign) }}
-      <select name="campaign" id="campaign">
+      <select name="campaign" id="campaign" onchange="change_campaign(event)">
 	{% for name, number in campaigns.items() %}
-	  <option value="{{ name }}"
+	  <option value="{{ name }}" data-count="{{number}}"
 	    {% if number <= 0 %}disabled='disabled'{% endif %}
 	    {% if name == form.campaign.data %}selected='selected'{% endif %}>
 	    {{ name }} ({{ number }})
