@@ -81,6 +81,10 @@ class Sheet():
                 sheet = pickle.loads(sheet)
             if sheet and sheet.sheet_id == Sheet.SHEET_ID:
                 sheet.use()
+        if self.sheet and self.sheet.expires < time.time():
+            self.sheet = None
+        if not self.sheet:
+            set_state('sheet', b'')
         return self.sheet
 
     @classmethod
@@ -97,17 +101,20 @@ class Sheet():
         self._texters = None
         self._campaigns = None
         self.channel = None
+        self.expires = None
 
     def __getstate__(self):
         return {
             'creds':   self._creds,
             'sheet':   self.sheet_id,
-            'channel': self.channel
+            'channel': self.channel,
+            'expires': self.expires
         }
 
     def __setstate__(self, state):
         self.__init__(state['creds'], state['sheet'])
         self.channel = state['channel']
+        self.expires = state['expires']
 
     @property
     def creds(self) -> google.oauth2.credentials.Credentials:
@@ -147,8 +154,8 @@ class Sheet():
                     'type': 'web_hook',
                     'address': flask.url_for('watch', _external=True)
                 }).execute()
+        self.expires = int(res['expiration'])/1000
         self.update()
-        # TODO res['expiration']
 
     def modified(self):
         self._texters = None
@@ -228,8 +235,8 @@ def oauth2callback():
             return 'Form is missing named range: ' + r, 424
     sheet.add_response('', 'activating', '', flask.url_for('activate', _external=True))
 
-    sheet.use()
     sheet.watch()
+    sheet.use()
     return flask.redirect('/')
 
 class Form(wtforms.Form):
