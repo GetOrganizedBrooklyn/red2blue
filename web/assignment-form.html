@@ -33,7 +33,7 @@
     <div>
       {{ field_label(form.campaign) }}
       <select name="campaign" id="campaign" onchange="change_campaign(event)">
-	{% for name, number in campaigns.items() %}
+	{% for name, number in sheet.campaigns.items() %}
 	  <option value="{{ name }}" data-count="{{number}}"
 	    {% if number <= 0 %}disabled='disabled'{% endif %}
 	    {% if name == form.campaign.data %}selected='selected'{% endif %}>

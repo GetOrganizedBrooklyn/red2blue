@@ -3,7 +3,7 @@
 ## Realtime assignment form
 
 This is a python flask web app to serve a form for texters to pre-request assignments.
-It pulls texters and campaigns from a google sheet, and submits back to a google form for that sheet.
+It pulls texters and campaigns from a google sheet, and submits back to that sheet.
 
 ### Configuration and state
 
@@ -15,26 +15,24 @@ There are a few ways to do this:
 
 1. State and configuration can be maintained as files on disk, named by their key, suitable for a local deployment.
 1. State and configuration can be stored in a redis database specified by `REDIS_URL` in the environment, suitable for heroku.
-1. Configuration settings can be specified in the environment.
+1. Configuration settings can be specified in the environment (as uppercase).
 
 The following settings are required:
 
 <dl>
 <dt>sheet_id</dt>
-<dd>The id of the google sheet to pull from.  You can find it in the URL of the sheet: https://docs.google.com/spreadsheets/d/<em>sheet_id</em>/edit?usp=sharing</dd>
-<dt>form_id</dt>
-<dd>The id of the google form to submit to.  You can find it in the URL of the form: https://docs.google.com/forms/d/<em>form_id</em>/edit?usp=sharing</dd>
+<dd>The id of the google sheet to use.  You can find it in the URL of the sheet: https://docs.google.com/spreadsheets/d/<em>sheet_id</em>/edit?usp=sharing</dd>
 <dt>client_secret</dt>
 <dd>The client secret JSON from google, which should look like <code>{"web":{"client_id":...</code>.</dd>
 </dl>
 
-The application also creates a random `secret` and `credentials` after activation.
+The application also creates a random `secret_key` if not set, and saves `sheet` after activation.
 
 ### Activation
 
 The site needs to be activated with a google account that has access to the source sheet.
 Visit the `/activate` URL to begin this process.
-It should remain activated for some amount of time (TBD)...
+It should remain activated indefinitely, saving the state in the `sheet` key, which can be manually removed to deactivate the form.
 
 ### Quickstart for local development
 
@@ -55,7 +53,7 @@ The setup generally follows Google's [python quickstart guide](https://developer
       source venv/bin/activate
       ```
    1. Install the dependencies: `pip3 install -r requirements.txt`
-1. Make sure `sheet_id` and `form_id` reference the google sheet and form you want to use, and that your google account has access to them.
+1. Make sure `sheet_id` reference the google sheet you want to use, and that your google account has access to it.
 1. Run flask for local development
    1. Create a `.flaskenv` file containing:
       ```
