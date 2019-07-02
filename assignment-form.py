@@ -81,8 +81,6 @@ class Sheet():
                 sheet = pickle.loads(sheet)
             if sheet and sheet.sheet_id == Sheet.SHEET_ID:
                 sheet.use()
-        if self.sheet and self.sheet.expires < time.time():
-            self.sheet = None
         if not self.sheet:
             set_state('sheet', b'')
         return self.sheet
@@ -145,7 +143,7 @@ class Sheet():
     def driveapi(self):
         return googleapiclient.discovery.build('drive', 'v3', credentials=self.creds)
 
-    def watch(self):
+    def watch(self) -> None:
         files = self.driveapi.files()
         self.channel = os.urandom(16).hex()
         res = files.watch(fileId = self.sheet_id,
@@ -160,6 +158,11 @@ class Sheet():
     def modified(self):
         self._texters = None
         self._campaigns = None
+
+    def rewatch(self) -> None:
+        if self.expires is None or self.expires < time.time():
+            self.modified()
+            self.watch()
 
     def get_sheet(self, **kwargs):
         return self.api.get(spreadsheetId = self.sheet_id, **kwargs).execute()
@@ -178,6 +181,7 @@ class Sheet():
 
     @property
     def texters(self) -> List[str]:
+        self.rewatch()
         if not self._texters:
             self._texters = self.get_texters()
         return self._texters
@@ -190,6 +194,7 @@ class Sheet():
 
     @property
     def campaigns(self) -> Dict[str, int]:
+        self.rewatch()
         if not self._campaigns:
             self._campaigns = self.get_campaigns()
         return self._campaigns
@@ -235,7 +240,6 @@ def oauth2callback():
             return 'Form is missing named range: ' + r, 424
     sheet.add_response('', 'activating', '', flask.url_for('activate', _external=True))
 
-    sheet.watch()
     sheet.use()
     return flask.redirect('/')
 
